@@ -1,0 +1,2 @@
+[ec2-amazon-linux2-hosts]
+ip_address ansible_ssh_private_key_file=~/.ssh/ansible_key ansible_user=sample_user ansible_become=true

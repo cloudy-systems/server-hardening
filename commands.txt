@@ -1,0 +1,4 @@
+ssh-keygen -t rsa -b 4096 -f ~/.ssh/ansible_key
+ansible-playbook playbook.yml -i inventory --tags openscap
+ansible-playbook playbook.yml -i inventory --tags openscap_remediate
+ssh -i ~/.ssh/my_aws ec2-user@ip_address

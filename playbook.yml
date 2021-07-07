@@ -1,0 +1,90 @@
+# Server hardening playbook for amazon linux 2 instances
+
+- hosts: ec2-amazon-linux2-hosts
+  vars:
+    oscap_package_version: "scap-security-guide"
+    oscap_profiles_path: "/usr/share/xml/scap/ssg/content/ssg-amzn2-ds.xml"
+    oscap_profile_name: "xccdf_org.ssgproject.content_profile_pci-dss"
+    oscap_result_path: "/tmp/oscap_results"
+    oscap_xml_results: "{{ oscap_result_path}}/results_{{ ansible_date_time.date }}.xml"
+    oscap_html_report: "{{ oscap_result_path }}/results_{{ ansible_date_time.date }}.html"
+
+  tasks:
+
+    - name: Install scap-security-guide
+      yum:
+        name: "{{ oscap_package_version }}"
+        state: present
+      tags:
+        - openscap
+        - openscap_install
+        - openscap_remediate
+
+    - name: Create a folder for the results
+      file:
+        path: "{{ oscap_result_path }}"
+        state: directory
+      tags:
+        - openscap
+        - openscap_init
+        - openscap_remediate
+
+    - name: Run the PCI Control Baseline for Amazon Linux 2 scan
+      shell: "oscap xccdf eval --profile {{ oscap_profile_name }} --results {{ oscap_xml_results }} --report {{ oscap_html_report }} {{ oscap_profiles_path }}"
+      # `oscap` returns 0 if all rules pass.
+      # If there is an error during evaluation, the return code is 1.
+      # If there is at least one rule with either fail or unknown result, `oscap` scan finishes with return code 2.
+      register: command_result
+      failed_when: command_result.rc == 1
+      tags:
+        - openscap
+        - openscap_scan
+        
+    - name: Run the remediation of PCI Control Baseline for Amazon Linux 2
+      shell: "oscap xccdf eval --remediate --profile {{ oscap_profile_name }} --results {{ oscap_xml_results }} --report {{ oscap_html_report }} {{ oscap_profiles_path }}"
+      # `oscap` returns 0 if all rules pass.
+      # If there is an error during evaluation, the return code is 1.
+      # If there is at least one rule with either fail or unknown result, `oscap` scan finishes with return code 2.
+      register: command_result
+      failed_when: command_result.rc == 1
+      tags:
+        - openscap_remediate
+
+    - name: Download the report & results to localhost
+      fetch:
+        src: "{{ oscap_html_report }}"
+        dest: "/tmp/{{ ansible_date_time.date }}_{{ ansible_hostname }}.{{ item }}"
+        flat: true
+      loop:
+        - "html"
+        - "xml"
+      tags:
+        - openscap
+        - openscap_getresults
+        - openscap_remediate
+
+    #- name: Simple PUT operation to S3 bucket
+    #  aws_s3:
+    #    bucket: "{{ s3_website_bucket_name }}"
+    #    object: "{{ ansible_date_time.date }}_{{ inventory_hostname }}.{{ item }}"
+    #    src: "/tmp/{{ ansible_date_time.date }}_{{ ansible_hostname }}.{{ item }}"
+    #    mode: put
+    #  delegate_to: localhost
+    #  loop:
+    #    - "html"
+    #    - "xml"
+    #  tags:
+    #    - openscap
+    #    - s3
+
+    - name: Remove the report & results
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ oscap_html_report }}"
+        - "{{ oscap_xml_results }}"
+      tags:
+        - openscap
+        - openscap_cleanup
+        - openscap_remediate
