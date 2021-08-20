@@ -1,2 +1,15 @@
-[ec2-amazon-linux2-hosts]
-ip_address ansible_ssh_private_key_file=~/.ssh/ansible_key ansible_user=sample_user ansible_become=true
+#Plain SSH example
+
+#[ec2-amazon-linux2-hosts]
+#ip_address ansible_ssh_private_key_file=~/.ssh/ansible_key ansible_user=sample_user ansible_become=true
+
+#AWS SSM example
+
+#my-instance ansible_host=i-01234567891234567
+
+#[all:vars]
+#ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ProxyCommand="sh -c \'AWS_PROFILE=test aws ec2-instance-connect send-ssh-public-key --instance-id %h --instance-os-user ec2-user --availability-zone eu-west-1b --ssh-public-key file://~/.ssh/id_rsa.pub && AWS_PROFILE=test aws ssm start-session --target %h --document-name AWS-StartSSHSession --parameters portNumber=%p\'"'
+#ansible_become=true
+
+##ansible_user='ec2-user'
+##ansible_ssh_private_key_file="/home/ec2-user/.ssh/id_rsa"
